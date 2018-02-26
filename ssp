@@ -217,10 +217,11 @@ sub init {
 
 sub run {
     local @ARGV = @_;    # Because GetOptionsFromArray available in Getopt::Long 2.36 and later only, Perl 5.8.8 on CentOS 5.11 includes 2.35
-    my ( $only_csi, $only_bugreport );
+    my ( $only_csi, $only_bugreport, $only_docreport );
 
     Getopt::Long::GetOptions(
         'bugreport' => \$only_bugreport,
+        'docreport' => \$only_docreport,
         'csi'       => \$only_csi,
         'timeout=i' => \$OPT_TIMEOUT,
     );
@@ -240,6 +241,7 @@ sub run {
 
     defined $only_csi       && exit csi_checks_only();
     defined $only_bugreport && exit print_bug_report();
+    defined $only_docreport && exit print_doc_report();
 
     if ( -e '/var/cpanel/dnsonly' ) {
         dnsonly_checks_only();
@@ -8300,6 +8302,43 @@ sub _http_get {
         }
     }
     return;
+}
+
+sub print_doc_report {
+    print <<END_OF_TEMPLATE
+{panel:title=(i) Document and ticket URLS}
+   
+* Link to the document that requires modification.
+* Link to the support ticket that contains the relevant information.
+   
+{panel}
+   
+----
+   
+{panel:title=(+) Details}
+   
+Provide relevant information for any documentation changes.
+If this is a request for new documentation, provide an outline with the technical details required to complete the document.
+  
+   
+----
+   
+{panel:title=(?) Steps to reproduce}
+  
+Provide any technical steps required by the writer for the changes needed.
+   
+{panel}
+   
+----
+   
+{panel:title=(/) Additional Information}
+  
+  
+Any other useful information for the tech writer to complete the changes.
+   
+{panel}
+
+END_OF_TEMPLATE
 }
 
 sub print_bug_report {
