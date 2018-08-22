@@ -34,7 +34,7 @@ use Cwd qw(abs_path);
 use Getopt::Long();
 
 # Application version (IMPORTANT! Increment this before submitting a pull request)
-our $VERSION = '4.99.191';
+our $VERSION = '4.99.192';
 
 # Global variables that alter application runtime
 our $OPT_SKIP_NETWORKING;    # Disable network calls
@@ -4375,7 +4375,8 @@ sub check_roots_cron_for_certain_commands {
         'f392372e36f56fb3e70e850a6bd1a550' => '/etc/cron.d/lvedbgovernor-utils-cron',    # standard CloudLinux script
     );
 
-    my %found = ();
+    my %critical_found = ();
+    my %found          = ();
 
     for my $cron (@cronlist) {
         next if !( -f $cron || -l $cron );
@@ -4397,12 +4398,24 @@ sub check_roots_cron_for_certain_commands {
         next if ( $checksum && $cron_ignore{$checksum} );
         if ( open my $cron_fh, '<', $cron ) {
             while (<$cron_fh>) {
+                if (m{ \A [^#]* (?:^|\s|\/)(backup|upcp)\s }x) {
+                    $critical_found{$1} = 1;
+                }
                 if (m{ \A [^#]* (?:^|\s|\/)(rm|unlink|ch(?:mod|own|attr)|(?:p|s)?kill(?:all)?5?|tmpwatch)\s }x) {
                     $found{$cron}{$1} = 1;
                 }
             }
             close $cron_fh;
         }
+    }
+
+    if ( !exists $critical_found{'backup'} ) {
+        print_warn("cron: ");
+        print_warning("cPanel backup cron is missing (/usr/local/cpanel/bin/backup)");
+    }
+    if ( !exists $critical_found{'upcp'} ) {
+        print_warn("cron: ");
+        print_warning("cPanel update cron is missing (/usr/local/cpanel/scripts/upcp)");
     }
 
     if (%found) {
