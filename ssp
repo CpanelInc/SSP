@@ -34,7 +34,7 @@ use Cwd qw(abs_path);
 use Getopt::Long();
 
 # Application version (IMPORTANT! Increment this before submitting a pull request)
-our $VERSION = '4.99.191';
+our $VERSION = '4.99.192';
 
 # Global variables that alter application runtime
 our $OPT_SKIP_NETWORKING;    # Disable network calls
@@ -260,6 +260,7 @@ sub run {
     print_ftpserver_info();
     print_exim_info();
     check_for_custom_webtemplates();
+    check_for_custom_restoremodules();
     check_for_custom_zonetemplates();
     check_for_license_info();
 
@@ -2228,6 +2229,25 @@ sub check_for_custom_webtemplates {
 
     print_info('Web templates: ');
     print_normal("found in ${template_dir} -- https://documentation.cpanel.net/display/ALD/Web+Template+Editor");
+}
+
+sub check_for_custom_restoremodules {
+    return unless i_am('cpanel');
+    my $restoremodule_dir = '/var/cpanel/perl/Whostmgr/Transfers/Systems';
+    return unless -d $restoremodule_dir;
+
+    my $found;
+    find(
+        sub {
+            return unless /\.pm$/s;
+            $found = 1;
+        },
+        $restoremodule_dir
+    );
+    return unless $found;
+
+    print_info('Custom Restore Modules: ');
+    print_normal("found in ${restoremodule_dir} -- can cause issues with restoration process if major version of cPanel was recently changed!");
 }
 
 sub check_for_custom_zonetemplates {
