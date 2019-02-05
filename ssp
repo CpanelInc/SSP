@@ -7255,16 +7255,11 @@ sub check_for_puppet_agent {
 sub check_for_demo_users {
     my $demofile = '/etc/demousers';
     return unless -f $demofile;
-    open my $demofile_fh, '<', $demofile or return;
-    while (<$demofile_fh>) {
-        chomp;
-        if (/*/) {
-            print_warn('Demo users: ');
-            print_warning('/etc/demousers has content. If FTP is not working for a user, this may be why.');
-            last;
-        }
+    if (-s $demofile > 0) {
+        print_warn('Demo users: ');
+        print_warning('/etc/demousers has content. If FTP is not working for a user, this may be why.');
+        last;
     }
-    close $demofile_fh;
 }
 
 ##############################
