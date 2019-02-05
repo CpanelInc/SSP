@@ -7258,7 +7258,6 @@ sub check_for_demo_users {
     if (-s $demofile > 0) {
         print_warn('Demo users: ');
         print_warning('/etc/demousers has content. If FTP is not working for a user, this may be why.');
-        last;
     }
 }
 
