@@ -415,6 +415,7 @@ sub run {
     check_for_saltstack();
     check_for_puppet_agent();
     check_imunify360_running();
+    check_for_demo_users();
 
     # [3RDP]
     check_smtp_processes();
