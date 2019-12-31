@@ -3016,7 +3016,7 @@ sub check_for_sneaky_htaccess {
     return unless i_am('cpanel');
     ## this is lazy checking. ideally we'd check HOMEMATCH from wwwacct.conf and go from there.
     ## but then, nothing guarantees the current HOMEMATCH has always been the same, either.
-    my @dirs = qw( / /home/ /home2/ /home3/ /home4/ /home5/ /home6/ /home7/ /home8/ /home9/ );
+    my @dirs = qw( / /var/www/html/ /home/ /home2/ /home3/ /home4/ /home5/ /home6/ /home7/ /home8/ /home9/ );
     my $htaccess;
 
     for my $dir (@dirs) {
