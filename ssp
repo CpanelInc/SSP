@@ -429,6 +429,7 @@ sub run {
     check_for_port_21_ftp();
     check_root_dns_resolvers();
     check_cloudlinux_phphandler_file();
+    check_ftpusers_file();
 
     # [3RDP]
     check_smtp_processes();
@@ -5830,6 +5831,13 @@ sub check_for_port_21_ftp {
     print_magenta("\t \\_ cmd     [$comm]");
     print_magenta("\t \\_ exe     [$exe]");
     print_magenta("\t \\_ cwd     [$cwd]");
+}
+
+sub check_ftpusers_file {
+    my $ftpusers_file = '/etc/ftpusers';
+    return unless ( -s $ftpusers_file );
+    print_warn('/etc/ftpusers exists: ');
+    print_warning('users in this file cannot access FTP');
 }
 
 # TODO: Once 84 is largely distrubuted, update this to use one of our modules
