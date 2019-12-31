@@ -430,6 +430,7 @@ sub run {
     check_root_dns_resolvers();
     check_cloudlinux_phphandler_file();
     check_ftpusers_file();
+    check_mylogincnf();
 
     # [3RDP]
     check_smtp_processes();
@@ -6127,6 +6128,13 @@ sub check_var_cpanel_immutable_files {
         print_warn('immutable files: ');
         print_warning("$immutable_files is not empty!");
     }
+}
+
+sub check_mylogincnf {
+    my $logincnf = '/root/.mylogin.cnf';
+    return unless ( -e $logincnf );
+    print_warn('/root/.mylogin.cnf exists: ');
+    print_warning('This file takes precedence over "/root/.my.cnf", see TECH-637');
 }
 
 sub check_for_noxsave_in_grub_conf {
