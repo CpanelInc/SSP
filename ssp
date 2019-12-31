@@ -8510,6 +8510,13 @@ sub check_for_cpro {
       /usr/bin/clnupdate
       /usr/bin/checkstatus
       /usr/bin/cspdaemon
+      /usr/bin/cpd
+      /usr/bin/HostCartCP
+      /usr/bin/HostCart_cpanel
+      /usr/bin/HSLicenseCP
+      /usr/bin/RcCpanel
+      /usr/bin/rccpcontrol
+      /usr/bin/RcLicense_cpanel
       /usr/bin/update_clnv2
       /usr/bin/update_clnv2.lock
       /usr/bin/update_cloudv2
