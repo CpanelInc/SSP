@@ -431,6 +431,7 @@ sub run {
     check_cloudlinux_phphandler_file();
     check_ftpusers_file();
     check_mylogincnf();
+    check_themesconf();
 
     # [3RDP]
     check_smtp_processes();
@@ -3871,6 +3872,13 @@ sub check_limitsconf {
         print_warn('/etc/security/limits.conf: ');
         print_warning('customizations found. DON\'T move/alter! Seeing "Unable to set uids"? See CronUnableToSetUID article, FB-76597.');
     }
+}
+
+sub check_themesconf {
+    my $themesconf = '/var/cpanel/themes.conf';
+    return unless ( -s $themesconf );
+    print_warn('/var/cpanel/themes.conf: ');
+    print_warning('limits the themes users can select in WHM/cPanel, see TECH-303');
 }
 
 sub check_disk_space {
