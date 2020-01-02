@@ -428,6 +428,7 @@ sub run {
     check_for_port_53_dnsmasq();
     check_for_port_21_ftp();
     check_root_dns_resolvers();
+    check_cloudlinux_phphandler_file();
 
     # [3RDP]
     check_smtp_processes();
@@ -5845,6 +5846,21 @@ sub check_root_dns_resolvers {
     print_warn('DNS: ');
     print_warning('Root DNS servers are unreachable [ ' . join(' ', @failed) . " ]. This can break AutoSSL. We stop after $limit failures, verify with this command:");
     print_warning("\t \\_ " . 'for i in {a..m}; do echo -n "$i.root-servers.net: "; dig -4 "$i".root-servers.net @"$i".root-servers.net +short;done');
+}
+
+sub check_cloudlinux_phphandler_file {
+    return unless i_am('cloudlinux');
+    my $phphandler_file = '/etc/container/php.handler';
+    return unless not -z $phphandler_file;
+    if (open my $fh, '<', $phphandler_file) {
+        while(<$fh>) {
+            next unless (m/x-httpd-ea-.*\/opt\/cloudlinux\/.*lsphp/);
+            print_warn('CloudLinux: ');
+            print_warning("/etc/container/php.handler exists. Having issues with downloading the PHP file? See TECH-792");
+            last;
+        }
+        close($fh);
+    }
 }
 
 sub check_if_httpdconf_ipaddrs_exist {
