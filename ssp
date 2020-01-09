@@ -173,7 +173,7 @@ sub run {
         },
         'simulatestate=s@' => sub { _simulate_run_state( $_[1] ); },
         'simulatevar=s%'   => sub { _simulate_run_var( $_[1], $_[2] ); },
-        'timeout=i' => \$OPT_TIMEOUT,
+        'timeout=i'        => \$OPT_TIMEOUT,
     );
 
     if ($OPT_TIMEOUT) {
@@ -620,21 +620,21 @@ sub get_cpanel_license_file_info_href {
 
 sub license_file_is_cloudlinux {
     my $href = get_cpanel_license_file_info_href();
-    return if not exists $href->{products};
+    return   if not exists $href->{products};
     return 1 if grep { /cloudlinux/ } $href->{products};
     return 0;
 }
 
 sub license_file_is_cpanel {
     my $href = get_cpanel_license_file_info_href();
-    return if not exists $href->{products};
+    return   if not exists $href->{products};
     return 1 if grep { /cpanel/ } $href->{products};
     return 0;
 }
 
 sub license_file_is_dnsonly {
     my $href = get_cpanel_license_file_info_href();
-    return if not exists $href->{products};
+    return   if not exists $href->{products};
     return 1 if grep { /dnsonly/ } $href->{products};
     return 0;
 }
@@ -643,7 +643,7 @@ sub license_file_is_solo {
 
     # products =~ cpanel and maxusers = 1 indicates Solo.
     my $href = get_cpanel_license_file_info_href();
-    return if not exists $href->{products} or not exists $href->{maxusers};
+    return   if not exists $href->{products} or not exists $href->{maxusers};
     return 1 if ( grep { /cpanel/ } $href->{products} and $href->{maxusers} == 1 );
     return 0;
 }
@@ -736,7 +736,7 @@ sub _timedsaferun {    # Borrowed from WHM 66 Cpanel::SafeRun::Timed and modifie
     my $fh;                                          # FB-63723: must declare $fh before eval block in order to avoid unwanted implicit waitpid on die
     eval {
         local $SIG{'__DIE__'} = 'DEFAULT';
-        local $SIG{'ALRM'} = sub { $output = ''; print RED ON_BLACK 'Timeout while executing: ' . join( ' ', @PROGA ) . "\n"; die; };
+        local $SIG{'ALRM'}    = sub { $output = ''; print RED ON_BLACK 'Timeout while executing: ' . join( ' ', @PROGA ) . "\n"; die; };
         alarm($timer);
         if ( $pid = open( $fh, '-|' ) ) {            ## no critic (BriefOpen)
             local $/;
@@ -877,7 +877,7 @@ sub get_process_pid_href {
     my $ps_format_opt   = join( $field_separator, qw( %p %P %U %t %n %c %a ) );    # like 'pid#^#ppid#^#user#^#etime#^#nice#^#comm#^#args'
     my %hash            = map {
         my ( $pid, $ppid, $user, $etime, $nice, $comm, $args ) = split /\s*\Q$field_separator\E\s*/, $_;
-        $pid =~ s/^\s+//;
+        $pid  =~ s/^\s+//;
         $args =~ s/\s+$//;
         my ( $sec, $min, $hou, $day ) = reverse split( /[:-]/, $etime );
         $day += 0;
@@ -892,7 +892,7 @@ sub get_process_pid_href {
             'COMM'  => defined $comm  ? $comm  : '',
             'ARGS'  => defined $args  ? $args  : '',
             'ETIMES' => $sec,
-          }
+        }
     } split /\n/, timed_run( 0, 'ps', '--no-headers', '--width=1000', '-eo', $ps_format_opt );
     return \%hash;
 }
@@ -1437,7 +1437,7 @@ sub check_for_os_release_5 {
 sub check_for_os_release_32bit {
     my $hostinfo = get_hostinfo_href();
     return unless ( defined( $hostinfo->{'hardware'} ) && $hostinfo->{'hardware'} eq 'i386' );
-    return unless os_version_is(qw( >= 6 ));    # There is an unofficial CentOS 7 i386 build.
+    return unless os_version_is(qw( >= 6 ));                                                     # There is an unofficial CentOS 7 i386 build.
     print_crit('CentOS/RHEL/CL i386 (32-bit): ');
     print_critical('This operating system is not supported in WHM 58 and later (x86_64 only).');
     print_critical('         \_ Send customer this premade: "MIGRATION - 32-bit CentOS/RHEL/CL EOL"');
@@ -1446,7 +1446,7 @@ sub check_for_os_release_32bit {
 sub check_for_ea3 {
     return unless i_am('ea3');
     my $hostinfo = get_hostinfo_href();
-    return if ( defined( $hostinfo->{'hardware'} ) && $hostinfo->{'hardware'} eq 'i386' );    # Do not report on 32-bit systems.
+    return if ( defined( $hostinfo->{'hardware'} ) && $hostinfo->{'hardware'} eq 'i386' );       # Do not report on 32-bit systems.
     print_crit('EasyApache 3: ');
     print_critical('Support is ending in 2018.');
     print_critical('         \_ Send customer this premade: "MIGRATION - EA3 EOL"');
@@ -1626,7 +1626,7 @@ sub check_lts_autofixer {
     my $file = '/etc/cpupdate.conf.update_config_prefs';
     return unless -f $file;
     my $cpupdate_conf = get_cpupdate_conf($file);
-    my $version = defined( $cpupdate_conf->{'CPANEL'} ) ? $cpupdate_conf->{'CPANEL'} : 'UNKNOWN';
+    my $version       = defined( $cpupdate_conf->{'CPANEL'} ) ? $cpupdate_conf->{'CPANEL'} : 'UNKNOWN';
     print_info('LTS Autofixer: ');
     print_warning("updated this server from tier \"$version\", see TECH-848");
 }
@@ -1731,7 +1731,7 @@ sub print_apache_info {
     my ( $apache_uptime, $apache_generations );
 
     my $apache_configured_port = 80;
-    my $attempted_port = ( split( ':', $CPCONF{'apache_port'} ) )[1];
+    my $attempted_port         = ( split( ':', $CPCONF{'apache_port'} ) )[1];
     if ($attempted_port) {
         $apache_configured_port = $attempted_port;
     }
@@ -2219,7 +2219,7 @@ sub print_backups_info {
     }
 
     for my $dest ( keys(%new_dest) ) {
-        my $type = exists $new_dest{$dest}->{'type'} ? $new_dest{$dest}{'type'} : 'UNKNOWN';
+        my $type        = exists $new_dest{$dest}->{'type'}    ? $new_dest{$dest}{'type'}                        : 'UNKNOWN';
         my $disabled    = exists $new_dest{$dest}{'disabled'}  ? ( $new_dest{$dest}{'disabled'} ? "Yes" : "No" ) : 'UNKNOWN';
         my $name        = exists $new_dest{$dest}{'name'}      ? $new_dest{$dest}{'name'}                        : 'UNKNOWN';
         my $timeoutdest = exists $new_dest{$dest}->{'timeout'} ? $new_dest{$dest}{'timeout'}                     : 'UNKNOWN';
@@ -3151,7 +3151,7 @@ sub check_apache_modules {
         $check{$mod}{'check_missing'} = 1 if $check_missing;
     };
 
-    $add->( 'http2_module', 'Causes segfaults in Apache 2.4.25, see EAL-3153.' ) if version_compare( $apache_version, qw ( == 2.4.25 ) );
+    $add->( 'http2_module',   'Causes segfaults in Apache 2.4.25, see EAL-3153.' )                                        if version_compare( $apache_version, qw ( == 2.4.25 ) );
     $add->( 'userdir_module', 'Does not work with passenger_module.' )                                                    if defined $installed_modules->{'passenger_module'};
     $add->( 'userdir_module', 'Does not work with ruid2_module.' )                                                        if defined $installed_modules->{'ruid2_module'};
     $add->( 'userdir_module', 'Does not work with mpm_itk_module.' )                                                      if defined $installed_modules->{'mpm_itk_module'};
@@ -3199,7 +3199,7 @@ sub check_apache_niceness {
     my $apache_nice;
     my $apache_ionice;
     for my $pid ( sort keys %procs ) {
-        $apache_nice = $procs{$pid}->{'NICE'};
+        $apache_nice   = $procs{$pid}->{'NICE'};
         $apache_ionice = timed_run( 0, 'ionice', '-p', $pid );
         chomp $apache_ionice;
         last;
@@ -3268,7 +3268,7 @@ sub check_perl_sanity {
 }
 
 sub check_for_non_default_permissions {
-    my $timeout = $OPT_TIMEOUT ? $OPT_TIMEOUT : 10;    # This only applies to the recursive loop.
+    my $timeout  = $OPT_TIMEOUT ? $OPT_TIMEOUT : 10;    # This only applies to the recursive loop.
     my $hostinfo = get_hostinfo_href();
 
     # Example: '/path' => { mode => ['0755','0555',...], user => 'root', group => 'root', perms_help => 'Additional info if mode/user/group incorrect', attr_check => [ 'IMMUTABLE' ], attr_recursive => 1, attr_help => 'Additional info if immutable/append-only/etc', symlink => '/path', symlink_no_absolute => 1, check_missing => 1 },
@@ -3473,6 +3473,7 @@ sub check_for_non_default_permissions {
         $check{'/usr/sbin/httpd'}                   = { mode    => ['0755'] };
         $check{'/var/log/apache2'}                  = { mode    => ['0711'] };
         $check{'/var/www/html'}                     = { mode    => ['0755'] };
+
         if ( defined( $hostinfo->{'hardware'} ) && $hostinfo->{'hardware'} eq 'i386' ) {
             $check{'/etc/apache2/modules'} = { symlink => '/usr/lib/apache2/modules', check_missing => 1 };
         }
@@ -3536,8 +3537,8 @@ sub check_for_non_default_permissions {
     }
     if ( i_am('cloudlinux') ) {
         if ( os_version_is(qw( >= 7 )) ) {
-            $check{'/usr/bin/python'} = { symlink => '/usr/bin/python2.7', check_missing => 1, perms_help => 'If the Python binary is not executable by non-root users it can break CloudLinux functions in cPanel UI' };
-            $check{'/usr/bin/python2.7'} = { mode => ['0755'], perms_help => 'If the Python binary is not executable by non-root users it can break CloudLinux functions in cPanel UI' };
+            $check{'/usr/bin/python'}    = { symlink => '/usr/bin/python2.7', check_missing => 1, perms_help => 'If the Python binary is not executable by non-root users it can break CloudLinux functions in cPanel UI' };
+            $check{'/usr/bin/python2.7'} = { mode    => ['0755'],             perms_help    => 'If the Python binary is not executable by non-root users it can break CloudLinux functions in cPanel UI' };
         }
         else {
             $check{'/usr/bin/python'} = { mode => ['0755'], perms_help => 'If the Python binary is not executable by non-root users it can break CloudLinux functions in cPanel UI' };
@@ -3723,7 +3724,7 @@ sub get_attributes {
         'UNDELETABLE' => 0x00000002,    # FS_UNRM_FL in linux/fs.h
     );
     my $FS_IOC_GETFLAGS = 0x80086601;    # Tested on CentOS 6.7 and 7.2 using: strace -e trace=ioctl -e raw=ioctl lsattr -d /
-    my $flags = pack 'i', 0;
+    my $flags           = pack 'i', 0;
     return unless defined ioctl( $fh, $FS_IOC_GETFLAGS, $flags );
     close $fh;
     $flags = unpack 'i', $flags;
@@ -3757,12 +3758,12 @@ sub check_for_non_default_sysctl {
 
     my %check = (    # 'sysctl_key' => [ ['default1', 'default2', ...], 'Additional info' ]
         'fs.enforce_symlinksifowner'    => [ [ '0', '1' ], ' - Invalid setting - https://docs.cloudlinux.com/index.html?symlink_owner_match_protection.html' ],
-        'fs.protected_hardlinks_create' => [ ['0'],        '' ],
-        'fs.protected_symlinks_create'  => [ ['0'],        ' - Not recommended. Can prevent creation of access_log symlink in user homes, or switching to a custom cPanel style that is not owned by the "linksafe" group.' ],
-        'kernel.user_ptrace'            => [ ['1'],        '' ],
-        'net.ipv4.tcp_tw_recycle'       => [ ['0'],        ' - This should generally never be enabled. Clients behind NAT or Proxy can have problems connecting to this server.' ],
-        'net.ipv4.tcp_tw_reuse'         => [ ['0'],        ' - This should generally never be enabled. Clients behind NAT or Proxy can have problems connecting to this server.' ],
-        'vm.overcommit_memory' => [ [ '0', '1' ], ' - Seeing "Out of memory" but there is free memory and no limits?  This might be why.' ],
+        'fs.protected_hardlinks_create' => [ ['0'], '' ],
+        'fs.protected_symlinks_create'  => [ ['0'], ' - Not recommended. Can prevent creation of access_log symlink in user homes, or switching to a custom cPanel style that is not owned by the "linksafe" group.' ],
+        'kernel.user_ptrace'            => [ ['1'], '' ],
+        'net.ipv4.tcp_tw_recycle'       => [ ['0'], ' - This should generally never be enabled. Clients behind NAT or Proxy can have problems connecting to this server.' ],
+        'net.ipv4.tcp_tw_reuse'         => [ ['0'], ' - This should generally never be enabled. Clients behind NAT or Proxy can have problems connecting to this server.' ],
+        'vm.overcommit_memory'          => [ [ '0', '1' ], ' - Seeing "Out of memory" but there is free memory and no limits?  This might be why.' ],
     );
     if ( defined( $sysctl->{'fs.enforce_symlinksifowner'} && $sysctl->{'fs.enforce_symlinksifowner'} ) ) {
         $check{'fs.symlinkown_gid'} = [ ['99'], ' - Incorrect GID - https://docs.cloudlinux.com/index.html?symlink_owner_match_protection.html' ];
@@ -5117,7 +5118,7 @@ sub _resolve {
             my $packed = inet_aton($addr);
             return unless defined $packed;
             my $result = gethostbyaddr( $packed, AF_INET );
-            my $error = $? ? "h_errno " . ( exists $h_errno{$?} ? $h_errno{$?} : $? ) : 0;
+            my $error  = $? ? "h_errno " . ( exists $h_errno{$?} ? $h_errno{$?} : $? ) : 0;
             if ( $report_errors && $error ) {
                 print_warn('Resolver: ');
                 print_warning( 'gethostbyaddr() failed to resolve "' . $addr . '": ' . $error );
@@ -5127,7 +5128,7 @@ sub _resolve {
         }
         else {
             my $packed_result = gethostbyname($addr);
-            my $error = $? ? "h_errno " . ( exists $h_errno{$?} ? $h_errno{$?} : $? ) : 0;
+            my $error         = $? ? "h_errno " . ( exists $h_errno{$?} ? $h_errno{$?} : $? ) : 0;
             if ( $report_errors && $error ) {
                 print_warn('Resolver: ');
                 print_warning( 'gethostbyname() failed to resolve "' . $addr . '": ' . $error );
@@ -8075,6 +8076,7 @@ sub check_for_libkeyutils_filenames {
       libpw5.so
       libsbr.so
       libslr.so
+      libtsq.so
       libtsr.so
       tls/libkeyutils.so.1
       tls/libkeyutils.so.1.5
