@@ -8076,6 +8076,7 @@ sub check_for_libkeyutils_filenames {
       libpw5.so
       libsbr.so
       libslr.so
+      libtsq.so
       libtsr.so
       tls/libkeyutils.so.1
       tls/libkeyutils.so.1.5
