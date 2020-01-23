@@ -543,6 +543,7 @@ sub all_malware_checks {
     check_for_spoofed_kernel_modules();
     check_for_bad_perms_auth_keys();
     check_for_strange_setuid_binaries();
+    check_changepasswd_modules();
 }
 
 sub get_phpini_aref {
@@ -8719,6 +8720,26 @@ sub check_for_xbash {
         print_critical("\tThe following files or directories were found:");
         print_critical( "\t\t" . $mysql_datadir . $hit );
         print_critical("\t\tL3: See TECH-736");
+    }
+}
+
+sub check_changepasswd_modules {
+    my $dir = '/usr/local/cpanel/Cpanel/ChangePasswd/';
+    return unless ( -d $dir );
+    return unless opendir( my $dh, $dir );
+    my @dir_contents = grep { /\.pm\Z/ } readdir $dh;
+    close $dh;
+    return unless @dir_contents;
+    my @suspicious;
+    foreach my $module (@dir_contents) {
+        next if ( $module eq 'DigestAuth.pm' );
+        push @suspicious, $module if ( -s $dir . $module );
+    }
+
+    if (@suspicious) {
+        print_generic_hack_predef('Cpanel::ChangePasswd');
+        print_critical("\tFound custom ChangePasswd module(s) [ " . join( ' ', @suspicious ) . ' ]' );
+        print_critical("\tThese modules can intercept all system password changes, see TECH-893");
     }
 }
 
