@@ -433,6 +433,7 @@ sub run {
     check_mylogincnf();
     check_themesconf();
     check_auto_migrate_ea3_to_ea4();
+    check_eset_rtp();
 
     # [3RDP]
     check_smtp_processes();
@@ -7801,6 +7802,27 @@ sub check_for_puppet_agent {
     print_warn('Puppet Agent: ');
     print_warning('the puppet process is running. Seeing files being reverted, this may be why');
 }
+
+sub check_eset_rtp {
+    my $eset = 'eset_rtp';
+    my $kernel_modules = get_kernel_modules_aref();
+    return unless (@$kernel_modules);
+    if ( grep { /^eset_rtp$/ } @$kernel_modules ) {
+        print_warn('ESET File Security: ');
+        print_warning('this can cause updates to fail during staging, see TECH-891');
+    }
+}
+
+sub get_kernel_modules_aref {
+    my $lsmod = timed_run( 0, 'lsmod' );
+    my @kernel_modules;
+    for my $line ( split( /\n/, $lsmod ) ) {
+        next if ( $line =~ m/\A Module \s+/x );
+        push @kernel_modules, $1 if ( $line =~ m/\A ([^\s]+) \s/x );
+    }
+    return \@kernel_modules;
+}
+
 ##############################
 #  END [WARN] CHECKS
 ##############################
