@@ -428,6 +428,7 @@ sub run {
     check_for_port_53_dnsmasq();
     check_for_port_21_ftp();
     check_root_dns_resolvers();
+    check_use_apache_md5_for_htaccess();
 
     # [3RDP]
     check_smtp_processes();
@@ -7746,6 +7747,14 @@ sub check_for_puppet_agent {
     print_warn('Puppet Agent: ');
     print_warning('the puppet process is running. Seeing files being reverted, this may be why');
 }
+
+sub check_use_apache_md5_for_htaccess {
+    return unless ( defined $CPCONF{'use_apache_md5_for_htaccess'} );
+    return if ( $CPCONF{'use_apache_md5_for_htaccess'} == 1 );
+    print_warn('Tweak Setting: ');
+    print_warning('use_apache_md5_for_htaccess is disabled, htpasswd limits passwords to a length of 8 characters');
+}
+
 ##############################
 #  END [WARN] CHECKS
 ##############################
