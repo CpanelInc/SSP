@@ -7648,10 +7648,10 @@ sub check_for_bg_botnet {
         }
     }
     return unless ( scalar @found_bg_files );
-    print_generic_hack_predef('BG BOTNET');
+    print_generic_hack_predef('BG BOTNET/Elknot');
     print_critical('The following files were found:');
     print_critical( "\t" . join( " ", @found_bg_files ) );
-    print_critical("\tL3: use \"L3 - BG Botnet Predef [L3 Only]\"");
+    print_critical("\tL3: use \"L3 - BG Botnet Predef [L3 Only]\", see TECH-863");
     print_critical();
 }
 
