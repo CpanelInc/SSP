@@ -434,6 +434,7 @@ sub run {
     check_themesconf();
     check_auto_migrate_ea3_to_ea4();
     check_eset_rtp();
+    check_use_apache_md5_for_htaccess();
 
     # [3RDP]
     check_smtp_processes();
@@ -7822,6 +7823,13 @@ sub get_kernel_modules_aref {
         push @kernel_modules, $1 if ( $line =~ m/\A ([^\s]+) \s/x );
     }
     return \@kernel_modules;
+}
+
+sub check_use_apache_md5_for_htaccess {
+    return unless ( defined $CPCONF{'use_apache_md5_for_htaccess'} );
+    return if ( $CPCONF{'use_apache_md5_for_htaccess'} == 1 );
+    print_warn('Tweak Setting: ');
+    print_warning('use_apache_md5_for_htaccess is disabled, htpasswd limits passwords to a length of 8 characters');
 }
 
 ##############################
