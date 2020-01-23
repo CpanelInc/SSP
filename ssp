@@ -7677,6 +7677,7 @@ sub check_for_bg_botnet {
       /etc/rc.d/init.d/selinux
       /usr/bin/.sshd
       /usr/bin/bsd-port/getty
+      /usr/bin/bsd-port/knerl
       /usr/bin/pojie
       /usr/lib/libamplify.so
       /var/.lug.txt
