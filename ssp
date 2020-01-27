@@ -34,7 +34,7 @@ use Cwd qw(abs_path);
 use Getopt::Long();
 
 # Application version (The project maintainer will bump this, don't modify it.)
-our $VERSION = '4.99.212';
+our $VERSION = '4.99.213';
 
 # Global variables that alter application runtime
 our $OPT_SKIP_NETWORKING;    # Disable network calls
@@ -173,7 +173,7 @@ sub run {
         },
         'simulatestate=s@' => sub { _simulate_run_state( $_[1] ); },
         'simulatevar=s%'   => sub { _simulate_run_var( $_[1], $_[2] ); },
-        'timeout=i' => \$OPT_TIMEOUT,
+        'timeout=i'        => \$OPT_TIMEOUT,
     );
 
     if ($OPT_TIMEOUT) {
@@ -428,6 +428,13 @@ sub run {
     check_for_port_53_dnsmasq();
     check_for_port_21_ftp();
     check_root_dns_resolvers();
+    check_cloudlinux_phphandler_file();
+    check_ftpusers_file();
+    check_mylogincnf();
+    check_themesconf();
+    check_auto_migrate_ea3_to_ea4();
+    check_eset_rtp();
+    check_use_apache_md5_for_htaccess();
 
     # [3RDP]
     check_smtp_processes();
@@ -538,6 +545,7 @@ sub all_malware_checks {
     check_for_spoofed_kernel_modules();
     check_for_bad_perms_auth_keys();
     check_for_strange_setuid_binaries();
+    check_changepasswd_modules();
 }
 
 sub get_phpini_aref {
@@ -620,21 +628,21 @@ sub get_cpanel_license_file_info_href {
 
 sub license_file_is_cloudlinux {
     my $href = get_cpanel_license_file_info_href();
-    return if not exists $href->{products};
+    return   if not exists $href->{products};
     return 1 if grep { /cloudlinux/ } $href->{products};
     return 0;
 }
 
 sub license_file_is_cpanel {
     my $href = get_cpanel_license_file_info_href();
-    return if not exists $href->{products};
+    return   if not exists $href->{products};
     return 1 if grep { /cpanel/ } $href->{products};
     return 0;
 }
 
 sub license_file_is_dnsonly {
     my $href = get_cpanel_license_file_info_href();
-    return if not exists $href->{products};
+    return   if not exists $href->{products};
     return 1 if grep { /dnsonly/ } $href->{products};
     return 0;
 }
@@ -643,7 +651,7 @@ sub license_file_is_solo {
 
     # products =~ cpanel and maxusers = 1 indicates Solo.
     my $href = get_cpanel_license_file_info_href();
-    return if not exists $href->{products} or not exists $href->{maxusers};
+    return   if not exists $href->{products} or not exists $href->{maxusers};
     return 1 if ( grep { /cpanel/ } $href->{products} and $href->{maxusers} == 1 );
     return 0;
 }
@@ -736,7 +744,7 @@ sub _timedsaferun {    # Borrowed from WHM 66 Cpanel::SafeRun::Timed and modifie
     my $fh;                                          # FB-63723: must declare $fh before eval block in order to avoid unwanted implicit waitpid on die
     eval {
         local $SIG{'__DIE__'} = 'DEFAULT';
-        local $SIG{'ALRM'} = sub { $output = ''; print RED ON_BLACK 'Timeout while executing: ' . join( ' ', @PROGA ) . "\n"; die; };
+        local $SIG{'ALRM'}    = sub { $output = ''; print RED ON_BLACK 'Timeout while executing: ' . join( ' ', @PROGA ) . "\n"; die; };
         alarm($timer);
         if ( $pid = open( $fh, '-|' ) ) {            ## no critic (BriefOpen)
             local $/;
@@ -877,7 +885,7 @@ sub get_process_pid_href {
     my $ps_format_opt   = join( $field_separator, qw( %p %P %U %t %n %c %a ) );    # like 'pid#^#ppid#^#user#^#etime#^#nice#^#comm#^#args'
     my %hash            = map {
         my ( $pid, $ppid, $user, $etime, $nice, $comm, $args ) = split /\s*\Q$field_separator\E\s*/, $_;
-        $pid =~ s/^\s+//;
+        $pid  =~ s/^\s+//;
         $args =~ s/\s+$//;
         my ( $sec, $min, $hou, $day ) = reverse split( /[:-]/, $etime );
         $day += 0;
@@ -892,7 +900,7 @@ sub get_process_pid_href {
             'COMM'  => defined $comm  ? $comm  : '',
             'ARGS'  => defined $args  ? $args  : '',
             'ETIMES' => $sec,
-          }
+        }
     } split /\n/, timed_run( 0, 'ps', '--no-headers', '--width=1000', '-eo', $ps_format_opt );
     return \%hash;
 }
@@ -1437,7 +1445,7 @@ sub check_for_os_release_5 {
 sub check_for_os_release_32bit {
     my $hostinfo = get_hostinfo_href();
     return unless ( defined( $hostinfo->{'hardware'} ) && $hostinfo->{'hardware'} eq 'i386' );
-    return unless os_version_is(qw( >= 6 ));    # There is an unofficial CentOS 7 i386 build.
+    return unless os_version_is(qw( >= 6 ));                                                     # There is an unofficial CentOS 7 i386 build.
     print_crit('CentOS/RHEL/CL i386 (32-bit): ');
     print_critical('This operating system is not supported in WHM 58 and later (x86_64 only).');
     print_critical('         \_ Send customer this premade: "MIGRATION - 32-bit CentOS/RHEL/CL EOL"');
@@ -1446,7 +1454,7 @@ sub check_for_os_release_32bit {
 sub check_for_ea3 {
     return unless i_am('ea3');
     my $hostinfo = get_hostinfo_href();
-    return if ( defined( $hostinfo->{'hardware'} ) && $hostinfo->{'hardware'} eq 'i386' );    # Do not report on 32-bit systems.
+    return if ( defined( $hostinfo->{'hardware'} ) && $hostinfo->{'hardware'} eq 'i386' );       # Do not report on 32-bit systems.
     print_crit('EasyApache 3: ');
     print_critical('Support is ending in 2018.');
     print_critical('         \_ Send customer this premade: "MIGRATION - EA3 EOL"');
@@ -1626,7 +1634,7 @@ sub check_lts_autofixer {
     my $file = '/etc/cpupdate.conf.update_config_prefs';
     return unless -f $file;
     my $cpupdate_conf = get_cpupdate_conf($file);
-    my $version = defined( $cpupdate_conf->{'CPANEL'} ) ? $cpupdate_conf->{'CPANEL'} : 'UNKNOWN';
+    my $version       = defined( $cpupdate_conf->{'CPANEL'} ) ? $cpupdate_conf->{'CPANEL'} : 'UNKNOWN';
     print_info('LTS Autofixer: ');
     print_warning("updated this server from tier \"$version\", see TECH-848");
 }
@@ -1731,7 +1739,7 @@ sub print_apache_info {
     my ( $apache_uptime, $apache_generations );
 
     my $apache_configured_port = 80;
-    my $attempted_port = ( split( ':', $CPCONF{'apache_port'} ) )[1];
+    my $attempted_port         = ( split( ':', $CPCONF{'apache_port'} ) )[1];
     if ($attempted_port) {
         $apache_configured_port = $attempted_port;
     }
@@ -2219,7 +2227,7 @@ sub print_backups_info {
     }
 
     for my $dest ( keys(%new_dest) ) {
-        my $type = exists $new_dest{$dest}->{'type'} ? $new_dest{$dest}{'type'} : 'UNKNOWN';
+        my $type        = exists $new_dest{$dest}->{'type'}    ? $new_dest{$dest}{'type'}                        : 'UNKNOWN';
         my $disabled    = exists $new_dest{$dest}{'disabled'}  ? ( $new_dest{$dest}{'disabled'} ? "Yes" : "No" ) : 'UNKNOWN';
         my $name        = exists $new_dest{$dest}{'name'}      ? $new_dest{$dest}{'name'}                        : 'UNKNOWN';
         my $timeoutdest = exists $new_dest{$dest}->{'timeout'} ? $new_dest{$dest}{'timeout'}                     : 'UNKNOWN';
@@ -3016,7 +3024,7 @@ sub check_for_sneaky_htaccess {
     return unless i_am('cpanel');
     ## this is lazy checking. ideally we'd check HOMEMATCH from wwwacct.conf and go from there.
     ## but then, nothing guarantees the current HOMEMATCH has always been the same, either.
-    my @dirs = qw( / /home/ /home2/ /home3/ /home4/ /home5/ /home6/ /home7/ /home8/ /home9/ );
+    my @dirs = qw( / /var/www/html/ /home/ /home2/ /home3/ /home4/ /home5/ /home6/ /home7/ /home8/ /home9/ );
     my $htaccess;
 
     for my $dir (@dirs) {
@@ -3151,7 +3159,7 @@ sub check_apache_modules {
         $check{$mod}{'check_missing'} = 1 if $check_missing;
     };
 
-    $add->( 'http2_module', 'Causes segfaults in Apache 2.4.25, see EAL-3153.' ) if version_compare( $apache_version, qw ( == 2.4.25 ) );
+    $add->( 'http2_module',   'Causes segfaults in Apache 2.4.25, see EAL-3153.' )                                        if version_compare( $apache_version, qw ( == 2.4.25 ) );
     $add->( 'userdir_module', 'Does not work with passenger_module.' )                                                    if defined $installed_modules->{'passenger_module'};
     $add->( 'userdir_module', 'Does not work with ruid2_module.' )                                                        if defined $installed_modules->{'ruid2_module'};
     $add->( 'userdir_module', 'Does not work with mpm_itk_module.' )                                                      if defined $installed_modules->{'mpm_itk_module'};
@@ -3199,7 +3207,7 @@ sub check_apache_niceness {
     my $apache_nice;
     my $apache_ionice;
     for my $pid ( sort keys %procs ) {
-        $apache_nice = $procs{$pid}->{'NICE'};
+        $apache_nice   = $procs{$pid}->{'NICE'};
         $apache_ionice = timed_run( 0, 'ionice', '-p', $pid );
         chomp $apache_ionice;
         last;
@@ -3268,7 +3276,7 @@ sub check_perl_sanity {
 }
 
 sub check_for_non_default_permissions {
-    my $timeout = $OPT_TIMEOUT ? $OPT_TIMEOUT : 10;    # This only applies to the recursive loop.
+    my $timeout  = $OPT_TIMEOUT ? $OPT_TIMEOUT : 10;    # This only applies to the recursive loop.
     my $hostinfo = get_hostinfo_href();
 
     # Example: '/path' => { mode => ['0755','0555',...], user => 'root', group => 'root', perms_help => 'Additional info if mode/user/group incorrect', attr_check => [ 'IMMUTABLE' ], attr_recursive => 1, attr_help => 'Additional info if immutable/append-only/etc', symlink => '/path', symlink_no_absolute => 1, check_missing => 1 },
@@ -3473,6 +3481,7 @@ sub check_for_non_default_permissions {
         $check{'/usr/sbin/httpd'}                   = { mode    => ['0755'] };
         $check{'/var/log/apache2'}                  = { mode    => ['0711'] };
         $check{'/var/www/html'}                     = { mode    => ['0755'] };
+
         if ( defined( $hostinfo->{'hardware'} ) && $hostinfo->{'hardware'} eq 'i386' ) {
             $check{'/etc/apache2/modules'} = { symlink => '/usr/lib/apache2/modules', check_missing => 1 };
         }
@@ -3536,8 +3545,8 @@ sub check_for_non_default_permissions {
     }
     if ( i_am('cloudlinux') ) {
         if ( os_version_is(qw( >= 7 )) ) {
-            $check{'/usr/bin/python'} = { symlink => '/usr/bin/python2.7', check_missing => 1, perms_help => 'If the Python binary is not executable by non-root users it can break CloudLinux functions in cPanel UI' };
-            $check{'/usr/bin/python2.7'} = { mode => ['0755'], perms_help => 'If the Python binary is not executable by non-root users it can break CloudLinux functions in cPanel UI' };
+            $check{'/usr/bin/python'}    = { symlink => '/usr/bin/python2.7', check_missing => 1, perms_help => 'If the Python binary is not executable by non-root users it can break CloudLinux functions in cPanel UI' };
+            $check{'/usr/bin/python2.7'} = { mode    => ['0755'],             perms_help    => 'If the Python binary is not executable by non-root users it can break CloudLinux functions in cPanel UI' };
         }
         else {
             $check{'/usr/bin/python'} = { mode => ['0755'], perms_help => 'If the Python binary is not executable by non-root users it can break CloudLinux functions in cPanel UI' };
@@ -3723,7 +3732,7 @@ sub get_attributes {
         'UNDELETABLE' => 0x00000002,    # FS_UNRM_FL in linux/fs.h
     );
     my $FS_IOC_GETFLAGS = 0x80086601;    # Tested on CentOS 6.7 and 7.2 using: strace -e trace=ioctl -e raw=ioctl lsattr -d /
-    my $flags = pack 'i', 0;
+    my $flags           = pack 'i', 0;
     return unless defined ioctl( $fh, $FS_IOC_GETFLAGS, $flags );
     close $fh;
     $flags = unpack 'i', $flags;
@@ -3757,12 +3766,12 @@ sub check_for_non_default_sysctl {
 
     my %check = (    # 'sysctl_key' => [ ['default1', 'default2', ...], 'Additional info' ]
         'fs.enforce_symlinksifowner'    => [ [ '0', '1' ], ' - Invalid setting - https://docs.cloudlinux.com/index.html?symlink_owner_match_protection.html' ],
-        'fs.protected_hardlinks_create' => [ ['0'],        '' ],
-        'fs.protected_symlinks_create'  => [ ['0'],        ' - Not recommended. Can prevent creation of access_log symlink in user homes, or switching to a custom cPanel style that is not owned by the "linksafe" group.' ],
-        'kernel.user_ptrace'            => [ ['1'],        '' ],
-        'net.ipv4.tcp_tw_recycle'       => [ ['0'],        ' - This should generally never be enabled. Clients behind NAT or Proxy can have problems connecting to this server.' ],
-        'net.ipv4.tcp_tw_reuse'         => [ ['0'],        ' - This should generally never be enabled. Clients behind NAT or Proxy can have problems connecting to this server.' ],
-        'vm.overcommit_memory' => [ [ '0', '1' ], ' - Seeing "Out of memory" but there is free memory and no limits?  This might be why.' ],
+        'fs.protected_hardlinks_create' => [ ['0'], '' ],
+        'fs.protected_symlinks_create'  => [ ['0'], ' - Not recommended. Can prevent creation of access_log symlink in user homes, or switching to a custom cPanel style that is not owned by the "linksafe" group.' ],
+        'kernel.user_ptrace'            => [ ['1'], '' ],
+        'net.ipv4.tcp_tw_recycle'       => [ ['0'], ' - This should generally never be enabled. Clients behind NAT or Proxy can have problems connecting to this server.' ],
+        'net.ipv4.tcp_tw_reuse'         => [ ['0'], ' - This should generally never be enabled. Clients behind NAT or Proxy can have problems connecting to this server.' ],
+        'vm.overcommit_memory'          => [ [ '0', '1' ], ' - Seeing "Out of memory" but there is free memory and no limits?  This might be why.' ],
     );
     if ( defined( $sysctl->{'fs.enforce_symlinksifowner'} && $sysctl->{'fs.enforce_symlinksifowner'} ) ) {
         $check{'fs.symlinkown_gid'} = [ ['99'], ' - Incorrect GID - https://docs.cloudlinux.com/index.html?symlink_owner_match_protection.html' ];
@@ -3867,6 +3876,13 @@ sub check_limitsconf {
         print_warn('/etc/security/limits.conf: ');
         print_warning('customizations found. DON\'T move/alter! Seeing "Unable to set uids"? See CronUnableToSetUID article, FB-76597.');
     }
+}
+
+sub check_themesconf {
+    my $themesconf = '/var/cpanel/themes.conf';
+    return unless ( -s $themesconf );
+    print_warn('/var/cpanel/themes.conf: ');
+    print_warning('limits the themes users can select in WHM/cPanel, see TECH-303');
 }
 
 sub check_disk_space {
@@ -5117,7 +5133,7 @@ sub _resolve {
             my $packed = inet_aton($addr);
             return unless defined $packed;
             my $result = gethostbyaddr( $packed, AF_INET );
-            my $error = $? ? "h_errno " . ( exists $h_errno{$?} ? $h_errno{$?} : $? ) : 0;
+            my $error  = $? ? "h_errno " . ( exists $h_errno{$?} ? $h_errno{$?} : $? ) : 0;
             if ( $report_errors && $error ) {
                 print_warn('Resolver: ');
                 print_warning( 'gethostbyaddr() failed to resolve "' . $addr . '": ' . $error );
@@ -5127,7 +5143,7 @@ sub _resolve {
         }
         else {
             my $packed_result = gethostbyname($addr);
-            my $error = $? ? "h_errno " . ( exists $h_errno{$?} ? $h_errno{$?} : $? ) : 0;
+            my $error         = $? ? "h_errno " . ( exists $h_errno{$?} ? $h_errno{$?} : $? ) : 0;
             if ( $report_errors && $error ) {
                 print_warn('Resolver: ');
                 print_warning( 'gethostbyname() failed to resolve "' . $addr . '": ' . $error );
@@ -5830,6 +5846,13 @@ sub check_for_port_21_ftp {
     print_magenta("\t \\_ cwd     [$cwd]");
 }
 
+sub check_ftpusers_file {
+    my $ftpusers_file = '/etc/ftpusers';
+    return unless ( -s $ftpusers_file );
+    print_warn('/etc/ftpusers exists: ');
+    print_warning('users in this file cannot access FTP');
+}
+
 # TODO: Once 84 is largely distrubuted, update this to use one of our modules
 sub check_root_dns_resolvers {
     my $limit     = 3;
@@ -5844,6 +5867,33 @@ sub check_root_dns_resolvers {
     print_warn('DNS: ');
     print_warning('Root DNS servers are unreachable [ ' . join(' ', @failed) . " ]. This can break AutoSSL. We stop after $limit failures, verify with this command:");
     print_warning("\t \\_ " . 'for i in {a..m}; do echo -n "$i.root-servers.net: "; dig -4 "$i".root-servers.net @"$i".root-servers.net +short;done');
+}
+
+sub check_cloudlinux_phphandler_file {
+    return unless i_am('cloudlinux');
+    my $phphandler_file = '/etc/container/php.handler';
+    return unless not -z $phphandler_file;
+    if (open my $fh, '<', $phphandler_file) {
+        while(<$fh>) {
+            next unless (m/x-httpd-ea-.*\/opt\/cloudlinux\/.*lsphp/);
+            print_warn('CloudLinux: ');
+            print_warning("/etc/container/php.handler exists. Having issues with downloading the PHP file? See TECH-792");
+            last;
+        }
+        close($fh);
+    }
+}
+
+sub check_auto_migrate_ea3_to_ea4 {
+    my $file = '/var/cpanel/auto_migrate_ea3_to_ea4';
+    return unless ( -e $file );
+    if ( open my $fh, '<', $file ) {
+        my $line = readline($fh);
+        close $fh;
+        my $result = (defined($line) && $line =~ m/\s = \s 1 \Z/x) ? 'succeeded' : 'failed';
+        print_warn('EA4: ');
+        print_warning("Auto upgrade from EA3 $result, tag the ticket with 'ea3-to-ea4-conversion'");
+    }
 }
 
 sub check_if_httpdconf_ipaddrs_exist {
@@ -6102,6 +6152,13 @@ sub check_var_cpanel_immutable_files {
         print_warn('immutable files: ');
         print_warning("$immutable_files is not empty!");
     }
+}
+
+sub check_mylogincnf {
+    my $logincnf = '/root/.mylogin.cnf';
+    return unless ( -e $logincnf );
+    print_warn('/root/.mylogin.cnf exists: ');
+    print_warning('This file takes precedence over "/root/.my.cnf", see TECH-637');
 }
 
 sub check_for_noxsave_in_grub_conf {
@@ -7621,6 +7678,7 @@ sub check_for_bg_botnet {
       /etc/rc.d/init.d/selinux
       /usr/bin/.sshd
       /usr/bin/bsd-port/getty
+      /usr/bin/bsd-port/knerl
       /usr/bin/pojie
       /usr/lib/libamplify.so
       /var/.lug.txt
@@ -7648,10 +7706,10 @@ sub check_for_bg_botnet {
         }
     }
     return unless ( scalar @found_bg_files );
-    print_generic_hack_predef('BG BOTNET');
+    print_generic_hack_predef('BG BOTNET/Elknot');
     print_critical('The following files were found:');
     print_critical( "\t" . join( " ", @found_bg_files ) );
-    print_critical("\tL3: use \"L3 - BG Botnet Predef [L3 Only]\"");
+    print_critical("\tL3: use \"L3 - BG Botnet Predef [L3 Only]\", see TECH-863");
     print_critical();
 }
 
@@ -7746,6 +7804,34 @@ sub check_for_puppet_agent {
     print_warn('Puppet Agent: ');
     print_warning('the puppet process is running. Seeing files being reverted, this may be why');
 }
+
+sub check_eset_rtp {
+    my $eset = 'eset_rtp';
+    my $kernel_modules = get_kernel_modules_aref();
+    return unless (@$kernel_modules);
+    if ( grep { /^eset_rtp$/ } @$kernel_modules ) {
+        print_warn('ESET File Security: ');
+        print_warning('this can cause updates to fail during staging, see TECH-891');
+    }
+}
+
+sub get_kernel_modules_aref {
+    my $lsmod = timed_run( 0, 'lsmod' );
+    my @kernel_modules;
+    for my $line ( split( /\n/, $lsmod ) ) {
+        next if ( $line =~ m/\A Module \s+/x );
+        push @kernel_modules, $1 if ( $line =~ m/\A ([^\s]+) \s/x );
+    }
+    return \@kernel_modules;
+}
+
+sub check_use_apache_md5_for_htaccess {
+    return unless ( defined $CPCONF{'use_apache_md5_for_htaccess'} );
+    return if ( $CPCONF{'use_apache_md5_for_htaccess'} == 1 );
+    print_warn('Tweak Setting: ');
+    print_warning('use_apache_md5_for_htaccess is disabled, htpasswd limits passwords to a length of 8 characters');
+}
+
 ##############################
 #  END [WARN] CHECKS
 ##############################
@@ -8075,6 +8161,7 @@ sub check_for_libkeyutils_filenames {
       libpw5.so
       libsbr.so
       libslr.so
+      libtsq.so
       libtsr.so
       tls/libkeyutils.so.1
       tls/libkeyutils.so.1.5
@@ -8508,6 +8595,13 @@ sub check_for_cpro {
       /usr/bin/clnupdate
       /usr/bin/checkstatus
       /usr/bin/cspdaemon
+      /usr/bin/cpd
+      /usr/bin/HostCartCP
+      /usr/bin/HostCart_cpanel
+      /usr/bin/HSLicenseCP
+      /usr/bin/RcCpanel
+      /usr/bin/rccpcontrol
+      /usr/bin/RcLicense_cpanel
       /usr/bin/update_clnv2
       /usr/bin/update_clnv2.lock
       /usr/bin/update_cloudv2
@@ -8657,6 +8751,26 @@ sub check_for_xbash {
         print_critical("\tThe following files or directories were found:");
         print_critical( "\t\t" . $mysql_datadir . $hit );
         print_critical("\t\tL3: See TECH-736");
+    }
+}
+
+sub check_changepasswd_modules {
+    my $dir = '/usr/local/cpanel/Cpanel/ChangePasswd/';
+    return unless ( -d $dir );
+    return unless opendir( my $dh, $dir );
+    my @dir_contents = grep { /\.pm\Z/ } readdir $dh;
+    close $dh;
+    return unless @dir_contents;
+    my @suspicious;
+    foreach my $module (@dir_contents) {
+        next if ( $module eq 'DigestAuth.pm' );
+        push @suspicious, $module if ( -s $dir . $module );
+    }
+
+    if (@suspicious) {
+        print_generic_hack_predef('Cpanel::ChangePasswd');
+        print_critical("\tFound custom ChangePasswd module(s) [ " . join( ' ', @suspicious ) . ' ]' );
+        print_critical("\tThese modules can intercept all system password changes, see TECH-893");
     }
 }
 
