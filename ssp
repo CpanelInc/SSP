@@ -1491,8 +1491,11 @@ sub print_kernel_and_cpu {
     return unless my $cpuinfo  = get_cpuinfo_href();
     print_info('Kernel/CPU: ');
     print_normal("$hostinfo->{'kernel'} $hostinfo->{'hardware'} $hostinfo->{'environment'} $cpuinfo->{'model'} w/ $cpuinfo->{'numcores'} core(s)");
+    if ( missing_open_opath_flag() ) {
+        print_warning("\t \\_ This kernel does not support O_PATH flag with open() which can cause service failure with systemd, see UPS-177");
+    }
     if ( $hostinfo->{'environment'} eq 'virtuozzo' && $hostinfo->{'kernel'} eq '2.6.32-042stab113.11' ) {
-        print_warning('         \\_ This kernel has broken quota support [ https://bugs.openvz.org/browse/OVZ-6661 ]');
+        print_warning("\t \\_ This kernel has broken quota support [ https://bugs.openvz.org/browse/OVZ-6661 ]");
     }
 }
 
@@ -7830,6 +7833,25 @@ sub check_use_apache_md5_for_htaccess {
     return if ( $CPCONF{'use_apache_md5_for_htaccess'} == 1 );
     print_warn('Tweak Setting: ');
     print_warning('use_apache_md5_for_htaccess is disabled, htpasswd limits passwords to a length of 8 characters');
+}
+
+sub missing_open_opath_flag {
+    return if os_version_is(qw( < 7 ));
+    my $eloop       = 'Too many levels of symbolic links';
+    my $SYS_open    = 2;            # See syscall.ph or h2ph
+    my $SYS_close   = 3;
+    my $sym         = '/proc/self';
+    my $flags       = 0x2e0000;     # O_RDONLY|O_NOFOLLOW|O_NOATIME|O_CLOEXEC|O_PATH
+    my $buf         = pack q/i/, 0;
+    local $!        = 0;
+    my $fd;
+
+    eval { $fd = syscall($SYS_open, $sym, $flags, $buf); };
+    unless ($!) {
+        syscall($SYS_close, $fd) if ($fd);
+        return;
+    }
+    ( $! =~ m/\Q$eloop\E/ ) ? return 1 : return;
 }
 
 ##############################
