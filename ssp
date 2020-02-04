@@ -5889,14 +5889,26 @@ sub check_cloudlinux_phphandler_file {
 
 sub check_auto_migrate_ea3_to_ea4 {
     my $file = '/var/cpanel/auto_migrate_ea3_to_ea4';
+    my ($correlation_id, $line, $result, $state, $macro);
     return unless ( -e $file );
+
     if ( open my $fh, '<', $file ) {
-        my $line = readline($fh);
+        $line = readline($fh);
         close $fh;
-        my $result = (defined($line) && $line =~ m/\s = \s 1 \Z/x) ? 'succeeded' : 'failed';
-        print_warn('EA4: ');
-        print_warning("Auto upgrade from EA3 $result, tag the ticket with 'ea3-to-ea4-conversion'");
     }
+
+    if (defined $line && $line =~ m/^(\S+) = (.*)$/) {
+        $correlation_id = $1;
+        $result         = $2;
+        ($state,$macro) = $result eq '1' ? ('succeeded', 'PREDEFS::TS::EA3 to EA4 Migration') : $result eq '0' ? ('failed', 'PREDEFS::TS::EA3 to EA4 Migration Failed') : ($result, 'PREDEFS::TS::EA3 to EA4 Migration');
+    } else {
+        $correlation_id = 'UNKNOWN';
+        $state          = 'failed';
+        $macro          = 'PREDEFS::TS::EA3 to EA4 Migration Failed';
+    }
+
+    print_warn('EA4: ');
+    print_warning("Auto upgrade from EA3, ID:$correlation_id, $state, use macro “$macro”");
 }
 
 sub check_if_httpdconf_ipaddrs_exist {
