@@ -7925,9 +7925,19 @@ sub check_for_nginx {
 
 sub check_for_mailscanner {
     return unless i_am_one_of( 'ea4', 'ea3' );
-    return unless exists_process_cmd( qr{ MailScanner }xms, 'mailnull' );
-    print_3rdp('MailScanner: ');
-    print_3rdp2('is running');
+    my $bin     = '/usr/mailscanner/usr/sbin/MailScanner';
+    my $running = exists_process_cmd( qr{ MailScanner }xms, 'mailnull' ) ? 1 : 0;
+
+    if ($running) {
+        print_3rdp('MailScanner: ');
+        print_3rdp2('is running');
+    } else {
+        return unless ( -e $bin );
+        my $version = timed_run_trap_stderr( 0, $bin, '--version');
+        return unless ( $version =~ m/failed--compilation/ );
+        print_3rdp('MailScanner: ');
+        print_warning('is installed but failed to compile, an update may be required to start the service, see UPS-210');
+    }
 }
 
 sub check_for_apf {
