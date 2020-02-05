@@ -34,7 +34,7 @@ use Cwd qw(abs_path);
 use Getopt::Long();
 
 # Application version (The project maintainer will bump this, don't modify it.)
-our $VERSION = '4.99.213';
+our $VERSION = '4.99.214';
 
 # Global variables that alter application runtime
 our $OPT_SKIP_NETWORKING;    # Disable network calls
@@ -1491,8 +1491,11 @@ sub print_kernel_and_cpu {
     return unless my $cpuinfo  = get_cpuinfo_href();
     print_info('Kernel/CPU: ');
     print_normal("$hostinfo->{'kernel'} $hostinfo->{'hardware'} $hostinfo->{'environment'} $cpuinfo->{'model'} w/ $cpuinfo->{'numcores'} core(s)");
+    if ( missing_open_opath_flag() ) {
+        print_warning("\t \\_ This kernel does not support O_PATH flag with open() which can cause service failure with systemd, see UPS-177");
+    }
     if ( $hostinfo->{'environment'} eq 'virtuozzo' && $hostinfo->{'kernel'} eq '2.6.32-042stab113.11' ) {
-        print_warning('         \\_ This kernel has broken quota support [ https://bugs.openvz.org/browse/OVZ-6661 ]');
+        print_warning("\t \\_ This kernel has broken quota support [ https://bugs.openvz.org/browse/OVZ-6661 ]");
     }
 }
 
@@ -5886,14 +5889,26 @@ sub check_cloudlinux_phphandler_file {
 
 sub check_auto_migrate_ea3_to_ea4 {
     my $file = '/var/cpanel/auto_migrate_ea3_to_ea4';
+    my ($correlation_id, $line, $result, $state, $macro);
     return unless ( -e $file );
+
     if ( open my $fh, '<', $file ) {
-        my $line = readline($fh);
+        $line = readline($fh);
         close $fh;
-        my $result = (defined($line) && $line =~ m/\s = \s 1 \Z/x) ? 'succeeded' : 'failed';
-        print_warn('EA4: ');
-        print_warning("Auto upgrade from EA3 $result, tag the ticket with 'ea3-to-ea4-conversion'");
     }
+
+    if (defined $line && $line =~ m/^(\S+) = (.*)$/) {
+        $correlation_id = $1;
+        $result         = $2;
+        ($state,$macro) = $result eq '1' ? ('succeeded', 'PREDEFS::TS::EA3 to EA4 Migration') : $result eq '0' ? ('failed', 'PREDEFS::TS::EA3 to EA4 Migration Failed') : ($result, 'PREDEFS::TS::EA3 to EA4 Migration');
+    } else {
+        $correlation_id = 'UNKNOWN';
+        $state          = 'failed';
+        $macro          = 'PREDEFS::TS::EA3 to EA4 Migration Failed';
+    }
+
+    print_warn('EA4: ');
+    print_warning("Auto upgrade from EA3, ID:$correlation_id, $state, use macro “$macro”");
 }
 
 sub check_if_httpdconf_ipaddrs_exist {
@@ -7832,6 +7847,25 @@ sub check_use_apache_md5_for_htaccess {
     print_warning('use_apache_md5_for_htaccess is disabled, htpasswd limits passwords to a length of 8 characters');
 }
 
+sub missing_open_opath_flag {
+    return if os_version_is(qw( < 7 ));
+    my $eloop       = 'Too many levels of symbolic links';
+    my $SYS_open    = 2;            # See syscall.ph or h2ph
+    my $SYS_close   = 3;
+    my $sym         = '/proc/self';
+    my $flags       = 0x2e0000;     # O_RDONLY|O_NOFOLLOW|O_NOATIME|O_CLOEXEC|O_PATH
+    my $buf         = pack q/i/, 0;
+    local $!        = 0;
+    my $fd;
+
+    eval { $fd = syscall($SYS_open, $sym, $flags, $buf); };
+    unless ($!) {
+        syscall($SYS_close, $fd) if ($fd);
+        return;
+    }
+    ( $! =~ m/\Q$eloop\E/ ) ? return 1 : return;
+}
+
 ##############################
 #  END [WARN] CHECKS
 ##############################
@@ -7891,9 +7925,19 @@ sub check_for_nginx {
 
 sub check_for_mailscanner {
     return unless i_am_one_of( 'ea4', 'ea3' );
-    return unless exists_process_cmd( qr{ MailScanner }xms, 'mailnull' );
-    print_3rdp('MailScanner: ');
-    print_3rdp2('is running');
+    my $running = exists_process_cmd( qr{ MailScanner }xms, 'mailnull' ) ? 1 : 0;
+
+    if ($running) {
+        print_3rdp('MailScanner: ');
+        print_3rdp2('is running');
+    } else {
+        my $bin     = '/usr/mailscanner/usr/sbin/MailScanner';
+        return unless ( -e $bin );
+        my $version = timed_run_trap_stderr( 0, $bin, '--version');
+        return unless ( $version =~ m/failed--compilation/ );
+        print_3rdp('MailScanner: ');
+        print_warning('is installed but failed to compile, an update may be required to start the service, see UPS-210');
+    }
 }
 
 sub check_for_apf {
